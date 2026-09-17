@@ -1,0 +1,1023 @@
+/* ============================================================
+   Comvi — Studio Filter Tangan
+   Tema: "majalah foto di atas kertas" — kertas hangat bertekstur,
+   tinta pekat, aksen vermilion ala dot REC. Stage kamera jadi
+   objek gelap yang diletakkan di atas kertas seperti cetakan.
+   ============================================================ */
+
+:root {
+	--paper: #f4f0e6;
+	--paper-2: #fdfcf7;
+	--ink: #1c1917;
+	--ink-soft: #6f6759;
+	--line: rgba(28, 25, 23, 0.15);
+	/* Border kontrol (chip): blend di atas kertas = #88857f → 3.22:1 ≥ 3:1
+	   (WCAG 1.4.11 non-teks; 0.34 hanya 2.22:1 — terukur). */
+	--line-strong: rgba(28, 25, 23, 0.5);
+	--accent: #d64518;
+	--accent-ink: #b23411;
+	--accent-bright: #ef6a3f;
+	/* Isi vermilion yang membawa teks kertas (paper di atas #d64518 hanya
+	   3.91:1 < 4.5:1; #b23411 = 5.44:1 — terukur, lihat laporan review). */
+	--accent-solid: #b23411;
+	--camera: #121014;
+	--camera-border: #2a2731;
+	--stage-border: #26232b;
+	--slot-dark: #0a090b;
+	--stop-on-dark: #fca5a5;
+	--help-title: #7f1d1d;
+	--camera-line: rgba(244, 240, 230, 0.13);
+	--camera-text: #ded7c8;
+	--camera-muted: #a49d8d;
+	--good: #4ade80;
+	--warn: #fbbf24;
+	--bad: #f87171;
+	--mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
+	--radius: 8px;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	color-scheme: light;
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	color: var(--ink);
+	font-family: var(--font-body), system-ui, -apple-system, sans-serif;
+	font-size: 16px;
+	line-height: 1.6;
+	background-color: var(--paper);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Butiran kertas — noise halus menyatu di seluruh halaman */
+body::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+	opacity: 0.055;
+}
+
+::selection {
+	background: var(--accent-solid);
+	color: var(--paper);
+}
+
+:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
+}
+
+/* ---------- Kerangka halaman ---------- */
+
+.page {
+	/* Full-bleed: tanpa max-width, konten memenuhi lebar layar — padding
+	   inline menjaga jarak dari tepi viewport (clamp mengikuti lebar layar). */
+	padding: 28px clamp(20px, 3vw, 48px) 72px;
+}
+
+.masthead {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 8px 12px;
+	padding-bottom: 14px;
+	border-bottom: 2px solid var(--ink);
+}
+
+.wordmark {
+	font-family: var(--font-display), Georgia, serif;
+	font-weight: 700;
+	font-size: 18px;
+	letter-spacing: 0.24em;
+}
+
+.rec-dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	margin-inline-start: 10px;
+	border-radius: 50%;
+	background: var(--accent);
+	transform: translateY(-2px);
+	animation: rec-blink 2.4s ease-in-out infinite;
+}
+
+@keyframes rec-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.25;
+	}
+}
+
+.masthead-meta {
+	font-family: var(--mono);
+	font-size: 11px;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+/* Satu baris headline kecil di bawah masthead (layout bersih) */
+.headline {
+	font-family: var(--font-display), Georgia, serif;
+	font-size: 22px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	margin: 26px 0 18px;
+	text-wrap: balance;
+}
+
+/* ---------- Halaman: tiap objek berdiri sendiri di atas kertas ---------- */
+
+.filter {
+	display: grid;
+	gap: 18px;
+}
+
+/*
+   Studio 3 kolom di atas kertas (better-layout: "content bleeds, controls
+   float"): kiri panel efek, tengah kios kamera (satu-satunya objek gelap),
+   kanan hasil jepretan. Rasio 2/12 · 8/12 · 2/12 — kamera selebar mungkin.
+*/
+.studio {
+	display: grid;
+	grid-template-columns: minmax(260px, 2fr) minmax(0, 8fr) minmax(260px, 2fr);
+	gap: 16px;
+	align-items: start;
+}
+
+/* Panel kertas mandiri di atas kertas (bukan di dalam box gelap lagi). */
+.studio-side {
+	align-self: start;
+}
+
+.studio-center {
+	min-width: 0;
+}
+
+@media (min-width: 1025px) {
+	.studio-side {
+		position: sticky;
+		top: 16px;
+	}
+}
+
+/* Kios kamera — satu-satunya objek gelap di atas kertas. Hanya membungkus
+   marquee, readout status, stage, dan slot bawah (bukan panel/galeri). */
+.booth {
+	display: grid;
+	gap: 14px;
+	background: var(--camera);
+	border: 1px solid var(--camera-border);
+	/* Konsentris: booth 20 = marquee 12 + padding 8 */
+	border-radius: 20px;
+	padding: 12px;
+	box-shadow:
+		0 34px 70px -34px rgba(28, 25, 23, 0.55),
+		inset 0 1px 0 rgba(244, 240, 230, 0.06);
+}
+
+.booth-marquee {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	background: var(--accent-solid);
+	border-radius: 8px;
+	padding: 10px 16px;
+}
+
+.booth-title {
+	font-family: var(--mono);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.3em;
+	text-transform: uppercase;
+	color: var(--paper);
+}
+
+.booth-bulbs {
+	display: flex;
+	gap: 8px;
+}
+
+.booth-bulbs i {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--paper);
+	animation: bulb-chase 1.6s ease-in-out infinite;
+}
+
+.booth-bulbs i:nth-child(2n) {
+	animation-delay: 0.8s;
+}
+
+@keyframes bulb-chase {
+	0%,
+	100% {
+		opacity: 1;
+		box-shadow: 0 0 6px rgba(244, 240, 230, 0.9);
+	}
+	50% {
+		opacity: 0.35;
+		box-shadow: none;
+	}
+}
+
+/* Panel kontrol kertas — sekarang mandiri di atas kertas (bukan di dalam
+   box gelap kios). Border + shadow tipis membacanya sebagai "cetakan kertas".
+   Grup di dalamnya bertumpuk vertikal penuh (tombol di kepala) supaya tinggi
+   panel stabil saat ganti tema, berapa pun chip "Gaya" yang dimiliki tema. */
+.booth-panel {
+	display: grid;
+	gap: 14px;
+	background: var(--paper-2);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	padding: 16px;
+	box-shadow: 0 18px 36px -22px rgba(28, 25, 23, 0.4);
+}
+
+/* Tombol kamera di kepala panel: memenuhi lebar & center — anchor visual
+   yang kuat, tinggi tidak bergantung panjang label terjemahan. */
+.btn--full {
+	width: 100%;
+	justify-content: center;
+}
+
+/* Varian ghost untuk toggle opsi: terlihat sebagai tombol, tapi tenang —
+   tidak bersaing dengan tombol merah utama di atasnya.
+   Specificity .btn.btn--ghost (0,2,0) diperlukan: aturan ini ditulis SEBELUM
+   .btn dasar di file, jadi tanpa itu color/background varian kalah cascade
+   → saat hover teks putih di atas latar terang (tak terlihat). */
+.btn.btn--ghost {
+	background: transparent;
+	color: var(--ink);
+	border-color: var(--line-strong);
+}
+
+@media (hover: hover) {
+	.btn.btn--ghost:hover:not(:disabled) {
+		background: rgba(28, 25, 23, 0.05);
+		box-shadow: none;
+	}
+}
+
+/* Toggle "Opsi jepret": satu tombol membuka/melipat semua grup opsi
+   (Tema/Gaya/Bingkai cetak/Mode) — panel mobile tidak rame. */
+.disclosure {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+.disclosure-chevron {
+	flex: none;
+	transition: rotate 0.15s ease;
+}
+
+.disclosure[aria-expanded='true'] .disclosure-chevron {
+	rotate: 180deg;
+}
+
+/* Wadah grup opsi; [hidden] eksplisit karena display:grid menimpanya. */
+.booth-panel__groups {
+	display: grid;
+	gap: 14px;
+}
+
+.booth-panel__groups[hidden] {
+	display: none;
+}
+
+/* ---------- Layar kios (di dalam box gelap) ---------- */
+
+.booth-screen {
+	display: grid;
+	gap: 10px;
+}
+
+/* Celah tempat strip foto "keluar" */
+.booth-slot {
+	height: 16px;
+	margin: 0 6px;
+	border-radius: 999px;
+	background: var(--slot-dark);
+	box-shadow:
+		inset 0 3px 6px rgba(0, 0, 0, 0.9),
+		0 1px 0 rgba(244, 240, 230, 0.08);
+}
+
+/* ---------- Stage (video + canvas) — objek kamera gelap ---------- */
+
+.stage {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 4 / 3;
+	background: var(--camera);
+	border: 1px solid var(--stage-border);
+	border-radius: var(--radius);
+	overflow: hidden;
+	box-shadow:
+		0 30px 60px -30px rgba(28, 25, 23, 0.5),
+		0 2px 6px rgba(28, 25, 23, 0.18);
+}
+
+.stage video,
+.stage canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	transform: scaleX(-1); /* mirror ala cermin (design.md §5) */
+	object-fit: cover; /* canvas & video memetakan crop yang sama → overlay tetap align */
+}
+
+.stage canvas {
+	pointer-events: none;
+}
+
+/* Kilatan layar saat auto-capture (fitur tema "Bingkai") */
+.flash {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	background: white;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.flash--active {
+	opacity: 0.9;
+	transition: opacity 0.35s ease-out;
+}
+
+/* Scanline halus — nuansa layar instrumen */
+.stage::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background: repeating-linear-gradient(
+		0deg,
+		rgba(255, 255, 255, 0.018) 0 1px,
+		transparent 1px 3px
+	);
+	mix-blend-mode: overlay;
+}
+
+/* Sudut bidik */
+.tick {
+	position: absolute;
+	width: 14px;
+	height: 14px;
+	pointer-events: none;
+	opacity: 0.85;
+	z-index: 2;
+}
+
+.tick--tl {
+	top: 10px;
+	inset-inline-start: 10px;
+	border-top: 2px solid rgba(244, 240, 230, 0.7);
+	border-inline-start: 2px solid rgba(244, 240, 230, 0.7);
+}
+
+.tick--tr {
+	top: 10px;
+	inset-inline-end: 10px;
+	border-top: 2px solid rgba(244, 240, 230, 0.7);
+	border-inline-end: 2px solid rgba(244, 240, 230, 0.7);
+}
+
+.tick--bl {
+	bottom: 10px;
+	inset-inline-start: 10px;
+	border-bottom: 2px solid rgba(244, 240, 230, 0.7);
+	border-inline-start: 2px solid rgba(244, 240, 230, 0.7);
+}
+
+.tick--br {
+	bottom: 10px;
+	inset-inline-end: 10px;
+	border-bottom: 2px solid rgba(244, 240, 230, 0.7);
+	border-inline-end: 2px solid rgba(244, 240, 230, 0.7);
+}
+
+/* Teks tengah stage saat kamera belum berjalan */
+.stage-empty {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	font-family: var(--mono);
+	font-size: 11px;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--camera-muted);
+	pointer-events: none;
+}
+
+.stage-empty-mark {
+	font-size: 30px;
+	color: var(--accent-bright);
+	animation: hover 2.6s ease-in-out infinite;
+}
+
+@keyframes hover {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-6px);
+	}
+}
+
+/* Placeholder saat dynamic import */
+.stage--loading {
+	background: linear-gradient(110deg, #16141a 30%, #1e1b23 50%, #16141a 70%);
+	background-size: 200% 100%;
+	animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+	to {
+		background-position: -200% 0;
+	}
+}
+
+/* ---------- Readout status — strip LCD kamera ---------- */
+
+.readout {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0;
+	padding: 11px 14px;
+	border: 1px solid var(--camera-line);
+	border-radius: 10px;
+	background: var(--camera);
+	font-family: var(--mono);
+	font-size: 12px;
+	letter-spacing: 0.05em;
+	color: var(--camera-text);
+}
+
+.readout-tag {
+	margin-left: auto;
+	font-size: 11px;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--accent-bright);
+	border: 1px solid rgba(239, 106, 63, 0.45);
+	border-radius: 999px;
+	padding: 2px 10px;
+	flex: none;
+}
+
+.dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--camera-muted);
+	flex: none;
+}
+
+.dot--good {
+	background: var(--good);
+	box-shadow: 0 0 10px rgba(74, 222, 128, 0.6);
+}
+
+.dot--warn {
+	background: var(--warn);
+	box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+.dot--bad {
+	background: var(--bad);
+	box-shadow: 0 0 10px rgba(248, 113, 113, 0.55);
+}
+
+/* ---------- Kontrol ---------- */
+
+/* Satu grup kontrol: label mikro terlihat + baris chips, baris penuh.
+   (better-layout: pengelompokan pakai ruang + label, bukan garis;
+   tepi leading grup & chips dibuat sama supaya mata memindai tepi lurus.) */
+.control-group {
+	display: grid;
+	gap: 6px;
+}
+
+.group-label {
+	font-family: var(--mono);
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+	padding-inline-start: 2px;
+}
+
+.btn {
+	appearance: none;
+	border: 1px solid var(--ink);
+	border-radius: 8px;
+	padding: 11px 22px;
+	font-family: var(--font-body), system-ui, sans-serif;
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	cursor: pointer;
+	background: var(--ink);
+	color: var(--paper);
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.15s ease,
+		background 0.15s ease;
+}
+
+@media (hover: hover) {
+	.btn:hover:not(:disabled) {
+		transform: translateY(-1px);
+		box-shadow: 0 10px 24px -10px rgba(28, 25, 23, 0.5);
+	}
+}
+
+.btn:active:not(:disabled) {
+	transform: translateY(0) scale(0.96);
+}
+
+/* Tombol utama kios — "tombol merah" photobooth. Isi memakai --accent-solid
+   (bukan --accent) supaya teks kertas lolos kontras 4.5:1 (5.44:1). */
+.btn--primary {
+	background: var(--accent-solid);
+	border-color: var(--accent-solid);
+}
+
+@media (hover: hover) {
+	.btn--primary:hover:not(:disabled) {
+		box-shadow: 0 10px 24px -10px rgba(178, 52, 17, 0.55);
+	}
+}
+
+.btn:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+.btn--stop {
+	background: transparent;
+	color: var(--accent-ink);
+	border-color: rgba(214, 69, 24, 0.5);
+}
+
+@media (hover: hover) {
+	.btn--stop:hover:not(:disabled) {
+		box-shadow: 0 10px 24px -12px rgba(214, 69, 24, 0.4);
+	}
+}
+
+/* Chips bebas terbungkus; mulai dari tepi leading yang sama dengan label
+   (tidak didorong ke kanan lagi — itu peninggalan layout box lama). */
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.chip {
+	appearance: none;
+	font-family: var(--mono);
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	/* padding 9/14 → tinggi ≈35px, mendekati target 40px desktop (better-accessibility: hit area) */
+	padding: 9px 14px;
+	border-radius: 999px;
+	border: 1px solid var(--line-strong);
+	color: var(--ink-soft);
+	background: transparent;
+	cursor: pointer;
+	transition:
+		border-color 0.15s ease,
+		color 0.15s ease,
+		background 0.15s ease,
+		transform 0.1s ease;
+}
+
+@media (hover: hover) {
+	.chip:hover {
+		border-color: var(--ink);
+		color: var(--ink);
+	}
+}
+
+/* Feedback tekan (better-ui: scale 0.96 selalu) */
+.chip:active:not(:disabled) {
+	transform: scale(0.96);
+}
+
+.chip--active {
+	background: var(--ink);
+	border-color: var(--ink);
+	color: var(--paper);
+}
+
+/* Segmented control untuk pilihan eksklusif dua opsi (mode jepretan).
+   Tombol menyatu dalam satu wadah pill; radius sisi luar tampil, sisi dalam hilang. */
+.segmented {
+	display: flex;
+}
+
+.segmented .chip {
+	border-radius: 0;
+	border-inline-end-width: 0;
+}
+
+.segmented .chip:first-child {
+	border-start-start-radius: 999px;
+	border-end-start-radius: 999px;
+}
+
+.segmented .chip:last-child {
+	border-start-end-radius: 999px;
+	border-end-end-radius: 999px;
+	border-inline-end-width: 1px;
+}
+
+/* ---------- Galeri hasil auto-capture — cetakan polaroid ---------- */
+
+/* Kolom kanan: wadah kertas mandiri di atas kertas (bukan di box gelap). */
+.gallery-wrap {
+	background: var(--paper-2);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	padding: 16px;
+	box-shadow: 0 18px 36px -22px rgba(28, 25, 23, 0.4);
+}
+
+/* Placeholder samar saat belum ada foto — grid tetap stabil, tidak melompat. */
+.gallery-empty {
+	margin: 6px 0 0;
+	color: var(--ink-soft);
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.gallery-head {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+.gallery-head .section-title {
+	flex: 1;
+	margin: 0;
+}
+
+.btn--mini {
+	padding: 7px 14px;
+	font-size: 12px;
+	border-radius: 999px;
+}
+
+.gallery {
+	/* Kolom kanan: kartu mengisi lebar kolom (grid 1–2 per baris tergantung lebar). */
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 12px;
+	margin-top: 10px;
+}
+
+.shot {
+	appearance: none;
+	font: inherit;
+	margin: 0;
+	width: 100%;
+	padding: 7px 7px 0;
+	border: 1px solid var(--line);
+	border-radius: 4px;
+	background: var(--paper-2);
+	box-shadow: 0 12px 26px -16px rgba(28, 25, 23, 0.45);
+	cursor: zoom-in;
+	transition:
+		rotate 0.2s ease,
+		transform 0.2s ease;
+	/* Strip "keluar" dari slot seperti cetakan photobooth */
+	animation: print-out 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes print-out {
+	from {
+		transform: translateY(-18px);
+		opacity: 0;
+	}
+	to {
+		transform: none;
+		opacity: 1;
+	}
+}
+
+.shot:nth-child(odd) {
+	rotate: -1.1deg;
+}
+
+.shot:nth-child(even) {
+	rotate: 1.1deg;
+}
+
+@media (hover: hover) {
+	.shot:hover {
+		rotate: 0deg;
+		transform: translateY(-2px);
+	}
+}
+
+.shot img {
+	display: block;
+	width: 100%;
+	border-radius: 2px;
+}
+
+.shot-caption {
+	display: block;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	padding: 5px 2px 7px;
+	font-family: var(--font-hand), 'Segoe Script', cursive;
+	font-size: 14px;
+	line-height: 1.2;
+	color: var(--ink-soft);
+}
+
+/* ---------- Lightbox pratinjau FULLSCREEN ---------- */
+
+.lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 50;
+	display: flex;
+	flex-direction: column;
+	background: rgba(12, 10, 9, 0.95);
+	animation: lightbox-fade 0.2s ease both;
+}
+
+@keyframes lightbox-fade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+/* Foto memenuhi layar; strip panjang bisa di-scroll */
+.lightbox-media {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	overflow-y: auto;
+	/* Scroll di dalam dialog, tidak merambat ke latar belakang */
+	overscroll-behavior: contain;
+	padding: 28px 28px 8px;
+}
+
+.lightbox-media img {
+	display: block;
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
+	border-radius: 4px;
+	/* Outline putih 10% — kedalaman konsisten di tepi foto (latar gelap) */
+	outline: 1px solid rgba(255, 255, 255, 0.1);
+	box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.85);
+}
+
+/* Strip 3×: default zoom-out — SELURUH strip terlihat sekaligus tanpa
+   scroll. Tanpa ini tiap frame boleh setinggi 100% layar → total N× layar.
+   `--frames` di-set inline oleh PhotoLightbox sesuai jumlah jepretan;
+   tinggi tiap frame = (ruang - gap antar frame) / jumlah frame. */
+.lightbox-media--strip img {
+	max-height: calc((100% - (var(--frames) - 1) * 10px) / var(--frames));
+}
+
+/* Bar aksi overlay di dasar layar */
+.lightbox-bar {
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 10px 16px;
+	padding: 12px 28px 20px;
+}
+
+.lightbox-caption {
+	font-family: var(--font-hand), cursive;
+	font-size: 22px;
+	color: var(--paper);
+}
+
+.lightbox-actions {
+	display: flex;
+	gap: 10px;
+}
+
+/* Tombol di atas latar gelap: versi kertas supaya kontras */
+.lightbox-actions .btn {
+	background: var(--paper-2);
+	color: var(--ink);
+	border-color: var(--paper-2);
+}
+
+.lightbox-actions .btn--stop {
+	background: transparent;
+	color: var(--stop-on-dark);
+	border-color: rgba(252, 165, 165, 0.5);
+}
+
+/* Langkah konfirmasi hapus: isi merah bahaya = perlakuan berbeda untuk
+   aksi destruktif (teks gelap di atas #f87171 ≈ 6.8:1, terukur). */
+.lightbox-actions .btn--stop.btn--confirm {
+	background: var(--bad);
+	color: var(--camera);
+	border-color: var(--bad);
+}
+
+/* Ring fokus default (tinta) tak terlihat di atas latar gelap lightbox
+   (≈1.1:1) — pakai warna kertas (15.86:1, terukur). */
+.lightbox :focus-visible {
+	outline-color: var(--paper);
+}
+
+.lightbox-close {
+	position: absolute;
+	top: 18px;
+	inset-inline-end: 22px;
+	appearance: none;
+	width: 40px;
+	height: 40px;
+	border: 1px solid rgba(244, 240, 230, 0.4);
+	border-radius: 50%;
+	background: transparent;
+	color: var(--paper);
+	font-size: 22px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+@media (hover: hover) {
+	.lightbox-close:hover {
+		background: rgba(244, 240, 230, 0.12);
+	}
+}
+
+/* ---------- Panel bantuan (error) ---------- */
+
+.help {
+	margin-top: 14px;
+	padding: 14px 16px;
+	border: 1px solid rgba(185, 28, 28, 0.4);
+	border-radius: 8px;
+	background: rgba(185, 28, 28, 0.05);
+	font-size: 14px;
+}
+
+.help strong {
+	display: block;
+	margin-bottom: 4px;
+	color: var(--help-title);
+	font-weight: 600;
+}
+
+.help ol {
+	margin: 8px 0 0;
+	padding-left: 20px;
+	color: var(--ink-soft);
+	display: grid;
+	gap: 4px;
+}
+
+.help p {
+	margin: 6px 0 0;
+	color: var(--ink-soft);
+}
+
+/* ---------- Judul seksi kecil (dipakai galeri "Hasil jepretan") ---------- */
+
+.section-title {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	font-family: var(--mono);
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--accent-ink);
+	margin: 0 0 4px;
+}
+
+.section-title::after {
+	content: '';
+	flex: 1;
+	height: 1px;
+	background: var(--line);
+}
+
+/* ---------- Animasi masuk ---------- */
+
+@keyframes rise {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.masthead,
+.headline,
+.filter {
+	animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.headline {
+	animation-delay: 0.07s;
+}
+
+.filter {
+	animation-delay: 0.14s;
+}
+
+/* Layar sempit / tablet: studio jadi satu kolom
+   (kontrol → kamera → hasil), urutan DOM sudah benar. */
+@media (max-width: 1024px) {
+	.studio {
+		grid-template-columns: 1fr;
+	}
+
+	.studio-side {
+		position: static;
+	}
+
+	/* Kartu galeri kembali 2-up rapi di lebar penuh. */
+	.gallery {
+		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	}
+}
+
+@media (max-width: 560px) {
+	.booth {
+		padding: 12px;
+	}
+
+	/* Sempit: panel & chips melebar penuh; segmented membagi rata. */
+	.booth-panel {
+		padding: 12px;
+	}
+
+	.segmented .chip {
+		flex: 1;
+	}
+
+	.readout-tag {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
