@@ -5,6 +5,7 @@ import glow from './glow';
 import skeleton from './skeleton';
 import sparkle from './sparkle';
 import frame from './frame';
+import blur from './blur';
 import cat from './cat';
 import hat from './hat';
 import heart from './heart';
@@ -16,6 +17,7 @@ export const OVERLAYS: OverlayModule[] = [
 	skeleton,
 	sparkle,
 	frame,
+	blur,
 	cat,
 	hat,
 	heart,

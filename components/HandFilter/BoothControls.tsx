@@ -8,7 +8,14 @@
 import { useState } from 'react';
 import { OVERLAYS } from './overlays';
 import { PHOTO_FRAMES } from './photoFrames';
-import type { CaptureMode, OverlayPreset } from './types';
+import type { RecorderStatus } from './useRecorder';
+import type { CaptureMode, MediaMode, OverlayPreset } from './types';
+
+/** Detik → "m:ss" untuk label tombol rekam. */
+function formatRec(seconds: number): string {
+	const total = Math.max(0, Math.round(seconds));
+	return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
 
 export interface BoothControlsProps {
 	isRunning: boolean;
@@ -28,8 +35,16 @@ export interface BoothControlsProps {
 	// ── Mode jepretan ─────────────────────────────────────────────────
 	captureMode: CaptureMode;
 	onCaptureModeChange: (mode: CaptureMode) => void;
+	// ── Mode hasil: foto (gesture) vs video (tombol rekam) ───────────
+	mediaMode: MediaMode;
+	onMediaModeChange: (mode: MediaMode) => void;
 	onStart: () => void;
 	onStop: () => void;
+	// ── Rekam video (canvas captureStream + MediaRecorder) ─────────────
+	recorderStatus: RecorderStatus;
+	/** Detik berjalan rekaman aktif (label tombol). */
+	recElapsed: number;
+	onToggleRecording: () => void;
 }
 
 export default function BoothControls({
@@ -45,8 +60,13 @@ export default function BoothControls({
 	onPhotoFrameChange,
 	captureMode,
 	onCaptureModeChange,
+	mediaMode,
+	onMediaModeChange,
 	onStart,
 	onStop,
+	recorderStatus,
+	recElapsed,
+	onToggleRecording,
 }: BoothControlsProps) {
 	// Opsi default terlipat di layar sempit (mobile) supaya kamera langsung
 	// terlihat tanpa scroll; terbuka di desktop. Komponen ini hanya dirender
@@ -77,6 +97,53 @@ export default function BoothControls({
 					:	'Aktifkan kamera'}
 				</button>
 			}
+
+			{/* ── Mode hasil: Foto / Video (di atas opsi jepret) ──────────────
+			    Foto = jepret via gesture/countdown; Video = tombol rekam.
+			    Segmented dua opsi eksklusif — bahasa sama dgn Mode jepretan. */}
+			<div className="control-group">
+				<span className="group-label" id="group-media">
+					Mode
+				</span>
+				<div className="segmented" role="group" aria-labelledby="group-media">
+					<button
+						type="button"
+						className={`chip${mediaMode === 'photo' ? ' chip--active' : ''}`}
+						aria-pressed={mediaMode === 'photo'}
+						onClick={() => onMediaModeChange('photo')}
+					>
+						Foto
+					</button>
+					<button
+						type="button"
+						className={`chip${mediaMode === 'video' ? ' chip--active' : ''}`}
+						aria-pressed={mediaMode === 'video'}
+						onClick={() => onMediaModeChange('video')}
+					>
+						Video
+					</button>
+				</div>
+			</div>
+
+			{/* ── Rekam video — hanya di mode Video (dan browser mendukung) ──
+			    Merekam canvas (video + efek). Saat aktif berubah jadi tombol
+			    berhenti dengan timer; hasil masuk galeri sebagai kartu video. */}
+			{mediaMode === 'video' && recorderStatus !== 'unsupported' && (
+				<button
+					type="button"
+					className={
+						recorderStatus === 'recording' ?
+							'btn btn--stop btn--full btn--recording'
+						:	'btn btn--ghost btn--full'
+					}
+					onClick={onToggleRecording}
+					disabled={!isRunning && recorderStatus === 'idle'}
+				>
+					{recorderStatus === 'recording' ?
+						`Berhenti ● ${formatRec(recElapsed)}`
+					:	'Rekam video'}
+				</button>
+			)}
 
 			{/* ── Toggle seluruh opsi (Tema/Gaya/Bingkai/Mode) ────────────────
 			    Satu tombol untuk membuka/melipat — di mobile panel tidak rame. */}
@@ -171,30 +238,32 @@ export default function BoothControls({
 				</div>
 			</div>
 
-			{/* ── Mode jepretan — segmented control ────────────────────────── */}
-			<div className="control-group">
-				<span className="group-label" id="group-mode">
-					Mode jepretan
-				</span>
-				<div className="segmented" role="group" aria-labelledby="group-mode">
-					<button
-						type="button"
-						className={`chip${captureMode === 'single' ? ' chip--active' : ''}`}
-						aria-pressed={captureMode === 'single'}
-						onClick={() => onCaptureModeChange('single')}
-					>
-						1×
-					</button>
-					<button
-						type="button"
-						className={`chip${captureMode === 'triple' ? ' chip--active' : ''}`}
-						aria-pressed={captureMode === 'triple'}
-						onClick={() => onCaptureModeChange('triple')}
-					>
-						3× strip
-					</button>
+			{/* ── Mode jepretan — hanya relevan di mode Foto ─────────────────── */}
+			{mediaMode === 'photo' && (
+				<div className="control-group">
+					<span className="group-label" id="group-mode">
+						Mode jepretan
+					</span>
+					<div className="segmented" role="group" aria-labelledby="group-mode">
+						<button
+							type="button"
+							className={`chip${captureMode === 'single' ? ' chip--active' : ''}`}
+							aria-pressed={captureMode === 'single'}
+							onClick={() => onCaptureModeChange('single')}
+						>
+							1×
+						</button>
+						<button
+							type="button"
+							className={`chip${captureMode === 'triple' ? ' chip--active' : ''}`}
+							aria-pressed={captureMode === 'triple'}
+							onClick={() => onCaptureModeChange('triple')}
+						>
+							3× strip
+						</button>
+					</div>
 				</div>
-			</div>
+			)}
 			</div>
 		</div>
 	);

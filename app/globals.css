@@ -351,6 +351,63 @@ body::before {
 	pointer-events: none;
 }
 
+/* Badge REC saat merekam — pojok atas stage, di atas canvas. */
+.rec-badge {
+	position: absolute;
+	top: 12px;
+	inset-inline-start: 50%;
+	transform: translateX(-50%);
+	z-index: 4;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 5px 12px;
+	border-radius: 999px;
+	background: rgba(10, 9, 11, 0.75);
+	border: 1px solid rgba(248, 113, 113, 0.55);
+	font-family: var(--mono);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.14em;
+	color: var(--paper);
+	pointer-events: none;
+}
+
+.rec-badge .rec-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--bad);
+	animation: rec-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+	0%,
+	100% {
+		opacity: 1;
+		box-shadow: 0 0 8px rgba(248, 113, 113, 0.9);
+	}
+	50% {
+		opacity: 0.3;
+		box-shadow: none;
+	}
+}
+
+/* Tombol rekam aktif — aksen merah menyala supaya status jelas. */
+.btn--recording {
+	animation: rec-btn-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes rec-btn-pulse {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.45);
+	}
+	50% {
+		box-shadow: 0 0 0 6px rgba(248, 113, 113, 0);
+	}
+}
+
 /* Kilatan layar saat auto-capture (fitur tema "Bingkai") */
 .flash {
 	position: absolute;
@@ -752,10 +809,18 @@ body::before {
 	}
 }
 
-.shot img {
+.shot img,
+.shot video {
 	display: block;
 	width: 100%;
 	border-radius: 2px;
+}
+
+/* Kartu video: thumbnail frame pertama + lencana durasi kecil. */
+.shot--video video {
+	aspect-ratio: 4 / 3;
+	object-fit: cover;
+	background: var(--camera);
 }
 
 .shot-caption {
@@ -806,7 +871,8 @@ body::before {
 	padding: 28px 28px 8px;
 }
 
-.lightbox-media img {
+.lightbox-media img,
+.lightbox-media video {
 	display: block;
 	max-width: 100%;
 	max-height: 100%;

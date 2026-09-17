@@ -27,7 +27,8 @@ export default function PhotoLightbox({
 	onClose,
 }: PhotoLightboxProps) {
 	const dialogRef = useRef<HTMLDivElement>(null);
-	const isStrip = (photo.frames?.length ?? 1) > 1;
+	const isVideo = photo.kind === 'video';
+	const isStrip = !isVideo && (photo.frames?.length ?? 1) > 1;
 
 	useEffect(() => {
 		dialogRef.current?.focus();
@@ -66,9 +67,10 @@ export default function PhotoLightbox({
 			aria-label={`Pratinjau foto ${formatCaptureTimestamp(photo.id)}`}
 		>
 			{/* Strip: default zoom-out — SELURUH strip pas dalam satu layar
-			    (tiap frame dibatasi tinggi (100% - gap)/jumlah frame via var). */}
+			    (tiap frame dibatasi tinggi (100% - gap)/jumlah frame via var).
+			    Video: elemen <video> kontrol penuh, pas dalam satu layar. */}
 			<div
-				className={`lightbox-media${isStrip ? ' lightbox-media--strip' : ''}`}
+				className={`lightbox-media${isStrip ? ' lightbox-media--strip' : ''}${isVideo ? ' lightbox-media--video' : ''}`}
 				style={
 					isStrip ?
 						({
@@ -80,7 +82,17 @@ export default function PhotoLightbox({
 					if (e.target === e.currentTarget) onClose();
 				}}
 			>
-				{isStrip ?
+				{isVideo ? (
+					// eslint-disable-next-line jsx-a11y/media-has-caption
+					<video
+						src={photo.videoUrl}
+						controls
+						autoPlay
+						muted
+						loop
+						playsInline
+					/>
+				) : isStrip ?
 					photo.frames!.map((frame, i) => (
 						// eslint-disable-next-line @next/next/no-img-element
 						<img

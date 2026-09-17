@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCamera } from './useCamera';
 import { useHandLandmarker } from './useHandLandmarker';
 import { useFaceLandmarker } from './useFaceLandmarker';
+import { useRecorder, type RecorderStatus } from './useRecorder';
 import {
 	FIST_HOLD_MS,
 	frameCorners,
@@ -29,7 +30,14 @@ import {
 	updateParticles,
 	type Particle,
 } from './overlays/pinchParticles';
-import type { CaptureMode, FaceFrame, HandFrame, Photo, Point } from './types';
+import type {
+	CaptureMode,
+	FaceFrame,
+	HandFrame,
+	MediaMode,
+	Photo,
+	Point,
+} from './types';
 
 /** Durasi countdown auto-capture setelah kepalan terdeteksi (ms). */
 const COUNTDOWN_MS = 5000;
@@ -39,6 +47,14 @@ const COOLDOWN_MS = 2500;
 const BURST_INTERVAL_MS = 5000;
 /** Jumlah jepretan per strip pada mode 3×. */
 const BURST_COUNT = 3;
+
+/** Format detik → "m:ss" (badge REC + caption video galeri). */
+function formatDuration(seconds: number): string {
+	const total = Math.max(0, Math.round(seconds));
+	const m = Math.floor(total / 60);
+	const s = total % 60;
+	return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 /** Teks di tengah canvas yang terbaca normal meski canvas di-mirror via CSS. */
 function drawCountdownNumber(
@@ -130,6 +146,8 @@ export default function HandFilter() {
 	const [themePresetId, setThemePresetId] = useState(DEFAULT_FRAME_FILTER_ID);
 	const [photoFrameId, setPhotoFrameId] = useState(DEFAULT_PHOTO_FRAME_ID);
 	const [captureMode, setCaptureMode] = useState<CaptureMode>('single');
+	// Mode hasil: foto (gesture/countdown) vs video (tombol rekam).
+	const [mediaMode, setMediaMode] = useState<MediaMode>('photo');
 	const [photos, setPhotos] = useState<Photo[]>([]);
 	const [flash, setFlash] = useState(false);
 	const [statusNote, setStatusNote] = useState<string | null>(null);
@@ -137,6 +155,8 @@ export default function HandFilter() {
 	const [previewId, setPreviewId] = useState<number | null>(null);
 	// true saat "Unduh semua" sedang berjalan (tombol disabled).
 	const [downloadingAll, setDownloadingAll] = useState(false);
+	// Detik berjalan dari rekaman video aktif (untuk badge REC + label tombol).
+	const [recElapsed, setRecElapsed] = useState(0);
 
 	// Data per-frame disimpan di ref supaya loop rAF tidak memicu re-render.
 	const handsRef = useRef<HandFrame[]>([]);
@@ -157,6 +177,9 @@ export default function HandFilter() {
 	const burstFramesRef = useRef<string[]>([]);
 
 	const overlay = useMemo(() => getOverlay(overlayId), [overlayId]);
+
+	// Perekam video: merekam canvas (video + efek) via MediaRecorder.
+	const recorder = useRecorder(canvasRef);
 
 	/**
 	 * Komposit frame video + canvas overlay menjadi satu data URL (sudah
@@ -197,7 +220,7 @@ export default function HandFilter() {
 	const capturePhoto = useCallback(() => {
 		const dataUrl = grabFrameDataUrl();
 		if (!dataUrl) return;
-		setPhotos((prev) => [{ id: Date.now(), dataUrl }, ...prev]);
+		setPhotos((prev) => [{ id: Date.now(), kind: 'photo', dataUrl }, ...prev]);
 		flashScreen();
 	}, [grabFrameDataUrl, flashScreen]);
 
@@ -212,8 +235,16 @@ export default function HandFilter() {
 
 	/** Unduh foto sebagai polaroid: komposit bingkai + caption tanggal-jam
 	 *  baru dijalankan saat tombol unduh ditekan (foto asli tetap murni). */
-	/** Siapkan & picu unduhan satu foto (polaroid tunggal atau strip panjang). */
+	/** Siapkan & picu unduhan satu item (polaroid/strip PNG, atau video webm). */
 	const downloadOne = useCallback(async (photo: Photo) => {
+		// Video: unduh blob URL langsung — tanpa komposit polaroid.
+		if (photo.kind === 'video') {
+			const a = document.createElement('a');
+			a.href = photo.videoUrl;
+			a.download = `comvi-video-${photo.id}.webm`;
+			a.click();
+			return;
+		}
 		const isStrip = (photo.frames?.length ?? 0) > 1;
 		const url =
 			isStrip ?
@@ -256,9 +287,53 @@ export default function HandFilter() {
 
 	/** Hapus foto dari galeri; kalau foto itu sedang dibuka, tutup lightbox. */
 	const removePhoto = useCallback((id: number) => {
-		setPhotos((prev) => prev.filter((p) => p.id !== id));
+		setPhotos((prev) =>
+			prev
+				.filter((p) => p.id !== id)
+				.map((p) => {
+					// Bebaskan blob URL rekaman video supaya tidak bocor memori.
+					if (p.kind === 'video' && p.videoUrl) URL.revokeObjectURL(p.videoUrl);
+					return p;
+				}),
+		);
 		setPreviewId((current) => (current === id ? null : current));
 	}, []);
+
+	/** Timer badge REC — interval 250ms selama merekam (re-render kecil). */
+	useEffect(() => {
+		if (recorder.status !== 'recording') {
+			setRecElapsed(0);
+			return;
+		}
+		const started = performance.now();
+		const t = window.setInterval(() => {
+			setRecElapsed((performance.now() - started) / 1000);
+		}, 250);
+		return () => window.clearInterval(t);
+	}, [recorder.status]);
+
+	/** Mulai/hentikan rekaman video. Hasil → galeri sebagai kartu video. */
+	const toggleRecording = useCallback(() => {
+		if (recorder.status === 'recording') {
+			void recorder
+				.stop()
+				.then((result) => {
+					if (!result) return;
+					setPhotos((prev) => [
+						{
+							id: Date.now(),
+							kind: 'video',
+							videoUrl: result.url,
+							durationMs: result.durationMs,
+						},
+						...prev,
+					]);
+				})
+				.catch((err) => console.error('Gagal menghentikan rekaman:', err));
+			return;
+		}
+		recorder.start();
+	}, [recorder]);
 
 	/** Tutup lightbox dan kembalikan fokus ke kartu galeri pemicunya. */
 	const closePreview = useCallback(() => {
@@ -362,13 +437,24 @@ export default function HandFilter() {
 		if (!ctx) return;
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-		// ---- Countdown auto-capture (aktif di SEMUA tema) ----
+		// Lapisan dasar: frame video SELALU digambar ke canvas sebelum tema.
+		// (1) Canvas kini = citra final lengkap (foto + efek) — prasyarat
+		// perekaman video via canvas.captureStream(); (2) ukuran canvas =
+		// resolusi video & object-fit sama → tampilan di layar tak berubah.
+		// Tema "Bingkai"/"Blur" menggambar ulang video penuh dengan
+		// filternya sendiri di atasnya (tak konflik).
+		ctx.filter = 'none';
+		ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+		// ---- Countdown auto-capture (aktif di SEMUA tema, hanya MODE FOTO) ----
 		// Kepalkan salah satu tangan -> timer 5 detik -> foto otomatis.
+		// Di mode video kepalan diabaikan — jepret foto & rekam tidak bercampur.
 		let countdownSeconds: number | null = null;
 		let captureNow = false;
 		{
 			const now = performance.now();
-			const fistNow = handsRef.current.some((h) => isFist(h.landmarks));
+			const fistNow =
+				mediaMode === 'photo' && handsRef.current.some((h) => isFist(h.landmarks));
 			const inCooldown = now < cooldownUntilRef.current;
 
 			// Kepalan harus ditahan sebentar (FIST_HOLD_MS) sebelum countdown
@@ -508,7 +594,7 @@ export default function HandFilter() {
 					const frames = burstFramesRef.current.slice();
 					if (frames.length > 0) {
 						const id = Date.now();
-						setPhotos((prev) => [{ id, dataUrl: frames[0], frames }, ...prev]);
+						setPhotos((prev) => [{ id, kind: 'photo', dataUrl: frames[0], frames }, ...prev]);
 						setStatusNote(
 							frames.length >= BURST_COUNT ?
 								`Strip ${frames.length} foto siap — buka untuk mengunduh.`
@@ -532,6 +618,7 @@ export default function HandFilter() {
 		themePresetId,
 		photoFrameId,
 		captureMode,
+		mediaMode,
 		capturePhoto,
 		startBurst,
 		grabFrameDataUrl,
@@ -540,7 +627,12 @@ export default function HandFilter() {
 
 	// Loop rAF hidup hanya selama kamera aktif; dibersihkan saat stop/unmount.
 	useEffect(() => {
-		if (camera.status !== 'active') return;
+		if (camera.status !== 'active') {
+			// Kamera mati/saat transisi: rekaman aktif dibatalkan tanpa file
+			// (hasil tanpa video subjek tidak berguna).
+			if (recorder.status === 'recording') recorder.cancel();
+			return;
+		}
 		let raf = 0;
 		const loop = () => {
 			raf = requestAnimationFrame(loop);
@@ -560,10 +652,11 @@ export default function HandFilter() {
 			burstTakenRef.current = 0;
 			burstFramesRef.current = [];
 			setStatusNote(null);
+			if (recorder.status === 'recording') recorder.cancel();
 			const canvas = canvasRef.current;
 			canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
 		};
-	}, [camera.status, step]);
+	}, [camera.status, step, recorder]);
 
 	const isRunning = camera.status === 'active';
 	const canStart =
@@ -621,8 +714,19 @@ export default function HandFilter() {
 							onPhotoFrameChange={setPhotoFrameId}
 							captureMode={captureMode}
 							onCaptureModeChange={setCaptureMode}
+							mediaMode={mediaMode}
+							onMediaModeChange={(next) => {
+								// Pindah ke mode foto saat merekam → rekaman disimpan dulu.
+								if (next === 'photo' && recorder.status === 'recording') {
+									toggleRecording();
+								}
+								setMediaMode(next);
+							}}
 							onStart={() => void camera.start()}
 							onStop={camera.stop}
+							recorderStatus={recorder.status}
+							recElapsed={recElapsed}
+							onToggleRecording={toggleRecording}
 						/>
 					</aside>
 
@@ -668,6 +772,15 @@ export default function HandFilter() {
 										autoPlay
 									/>
 									<canvas ref={canvasRef} />
+									{recorder.status === 'recording' && (
+										<span
+											className='rec-badge'
+											aria-hidden='true'
+										>
+											<i className='rec-dot' />
+											REC {formatDuration(recElapsed)}
+										</span>
+									)}
 									{emptyHint && (
 										<div
 											className='stage-empty'

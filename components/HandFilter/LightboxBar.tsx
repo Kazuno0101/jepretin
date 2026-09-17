@@ -20,7 +20,8 @@ const CONFIRM_RESET_MS = 3000;
 export default function LightboxBar({ photo, onDownload, onDelete }: LightboxBarProps) {
 	const [confirming, setConfirming] = useState(false);
 	const timerRef = useRef<number | null>(null);
-	const isStrip = (photo.frames?.length ?? 1) > 1;
+	const isVideo = photo.kind === 'video';
+	const isStrip = !isVideo && (photo.frames?.length ?? 1) > 1;
 
 	// Ganti foto → reset konfirmasi.
 	useEffect(() => {
@@ -48,7 +49,7 @@ export default function LightboxBar({ photo, onDownload, onDelete }: LightboxBar
 	return (
 		<div className="lightbox-bar">
 			<span className="lightbox-caption">
-				{isStrip ? 'Strip — ' : ''}
+				{isVideo ? 'Video' : isStrip ? 'Strip — ' : ''}
 				{formatCaptureTimestamp(photo.id)}
 			</span>
 			<div className="lightbox-actions">
@@ -57,7 +58,7 @@ export default function LightboxBar({ photo, onDownload, onDelete }: LightboxBar
 					className="btn"
 					onClick={() => onDownload(photo)}
 				>
-					{isStrip ? 'Unduh strip' : 'Unduh polaroid'}
+					{isVideo ? 'Unduh video' : isStrip ? 'Unduh strip' : 'Unduh polaroid'}
 				</button>
 				<button
 					type="button"

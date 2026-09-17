@@ -88,11 +88,27 @@ export interface OverlayModule {
 /** Mode jepretan: satu foto atau strip 3 jepretan dalam satu polaroid. */
 export type CaptureMode = 'single' | 'triple';
 
-/** Satu hasil foto auto-capture (disimpan sebagai data URL lokal). */
-export interface Photo {
-	id: number;
-	/** Jepretan pertama — dipakai sebagai thumbnail kartu galeri. */
-	dataUrl: string;
-	/** Mode 3×: seluruh jepretan strip (unduhan = 1 PNG panjang). */
-	frames?: string[];
-}
+/** Mode hasil: jepret foto (gesture/countdown) atau rekam video. */
+export type MediaMode = 'photo' | 'video';
+
+/**
+ * Satu item galeri. Foto (data URL PNG) atau rekaman video (blob URL webm) —
+ * semuanya disimpan LOKAL di perangkat, tidak pernah diunggah (privasi).
+ */
+export type Photo =
+	| {
+			id: number;
+			kind: 'photo';
+			/** Jepretan pertama — dipakai sebagai thumbnail kartu galeri. */
+			dataUrl: string;
+			/** Mode 3×: seluruh jepretan strip (unduhan = 1 PNG panjang). */
+			frames?: string[];
+	  }
+	| {
+			id: number;
+			kind: 'video';
+			/** Blob URL rekaman (dari useRecorder) — bukan data URL. */
+			videoUrl: string;
+			/** Durasi rekaman (ms) — dipakai caption kartu. */
+			durationMs: number;
+	  };
