@@ -112,6 +112,7 @@ function render({ ctx, width, height, face, presetId }: OverlayRenderContext) {
 export default {
 	id: 'cat',
 	label: 'Kucing',
+	modes: ['photo'],
 	presets: [
 		{ id: 'runcing', label: 'Runcing' },
 		{ id: 'bulat', label: 'Bulat' },

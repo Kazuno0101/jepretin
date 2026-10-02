@@ -83,6 +83,11 @@ export interface OverlayModule {
 	presets?: OverlayPreset[];
 	/** ID preset default (jika tema punya presets). */
 	defaultPresetId?: string;
+	/**
+	 * Mode hasil yang menampilkan tema ini di list "Tema" panel kontrol —
+	 * list tema tiap mode berbeda (foto ≠ video). Default: tersedia di keduanya.
+	 */
+	modes?: MediaMode[];
 }
 
 /** Mode jepretan: satu foto atau strip 3 jepretan dalam satu polaroid. */

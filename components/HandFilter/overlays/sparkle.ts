@@ -116,6 +116,7 @@ function render({
 export default {
 	id: 'sparkle',
 	label: 'Kilau',
+	modes: ['photo'],
 	presets: [
 		{ id: 'tiara', label: 'Tiara' },
 		{ id: 'keliling', label: 'Keliling' },

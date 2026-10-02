@@ -103,6 +103,7 @@ function render({ ctx, width, height, face, presetId, pinchPoints }: OverlayRend
 export default {
 	id: 'hat',
 	label: 'Topi Pesta',
+	modes: ['photo'],
 	presets: [
 		{ id: 'polkadot', label: 'Polkadot' },
 		{ id: 'strip', label: 'Strip' },

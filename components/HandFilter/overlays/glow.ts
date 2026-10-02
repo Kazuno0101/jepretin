@@ -85,6 +85,7 @@ function render({
 export default {
 	id: 'glow',
 	label: 'Cahaya',
+	modes: ['photo'],
 	presets: [
 		{ id: 'kepala', label: 'Kepala' },
 		{ id: 'jari', label: 'Ujung jari' },

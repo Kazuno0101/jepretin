@@ -77,6 +77,7 @@ function render({ ctx, width, height, face, presetId }: OverlayRenderContext) {
 export default {
 	id: 'star',
 	label: 'Bintang',
+	modes: ['photo'],
 	presets: [
 		{ id: 'mahkota', label: 'Mahkota' },
 		{ id: 'tunggal', label: 'Tunggal' },

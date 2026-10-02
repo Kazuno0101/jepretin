@@ -708,6 +708,9 @@ body::before {
 .segmented .chip {
 	border-radius: 0;
 	border-inline-end-width: 0;
+	/* Pilihan membagi rata lebar penuh (permintaan: tombol mode Foto/Video
+	   full width) — berlaku juga untuk segmented "Mode jepretan". */
+	flex: 1;
 }
 
 .segmented .chip:first-child {
@@ -1064,13 +1067,10 @@ body::before {
 		padding: 12px;
 	}
 
-	/* Sempit: panel & chips melebar penuh; segmented membagi rata. */
+	/* Sempit: panel merapatkan padding (segmented sudah membagi rata
+	   lebar penuh sejak aturan dasarnya). */
 	.booth-panel {
 		padding: 12px;
-	}
-
-	.segmented .chip {
-		flex: 1;
 	}
 
 	.readout-tag {

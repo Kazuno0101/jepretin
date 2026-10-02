@@ -1,10 +1,10 @@
-// Tema "Blur" — saudara tema "Bingkai": saat dua tangan membentuk persegi
-// (jempol + telunjuk direntangkan), SELURUH foto jadi blur (semua area).
-// Tanpa outline/garis: blur saja tanpa hiasan. Tanpa gesture: video biasa
-// (lapisan dasar sudah digambar HandFilter.step()).
+// Tema "Blur" — khusus MODE VIDEO (satu-satunya tema di list video).
+// SELURUH foto selalu blur, tanpa gesture, tanpa outline/kerangka —
+// blur saja. (Sebelumnya blur hanya aktif saat dua tangan membentuk
+// bingkai, padahal pemicu foto adalah kepalan satu tangan — tak mungkin
+// bersamaan — sehingga efeknya cuma ikut tersimpan di rekaman video.)
 // Tema STATIS: tidak memakai `time`. Kekuatan blur via sub-gaya.
 
-import { frameCorners } from '../gestures';
 import type { OverlayModule, OverlayRenderContext } from '../types';
 
 /** Sub-gaya kekuatan blur = fraksi lebar canvas (canvas bisa 640–1280px). */
@@ -20,14 +20,12 @@ function render({
 	ctx,
 	width,
 	height,
-	hands,
 	video,
 	presetId,
 }: OverlayRenderContext): void {
-	// Gesture bingkai terbentuk → seluruh foto diblur. Video digambar ulang
-	// (di atas lapisan dasar) dengan ctx.filter blur. Tanpa garis/outline
-	// — blur saja.
-	if (!frameCorners(hands) || !video || !video.videoWidth) return;
+	// Selalu blur: video digambar ulang (di atas lapisan dasar) dengan
+	// ctx.filter blur — tanpa syarat gesture, tanpa garis/outline.
+	if (!video || !video.videoWidth) return;
 
 	const preset = BLUR_PRESETS.find((p) => p.id === presetId) ?? BLUR_PRESETS[0];
 	const blurPx = Math.max(1, width * preset.factor);
@@ -44,8 +42,9 @@ function render({
 export default {
 	id: 'blur',
 	label: 'Blur',
+	// Hanya tampil di list tema mode Video (list Foto: semua tema kecuali Blur).
+	modes: ['video'],
 	presets: BLUR_PRESETS.map((p) => ({ id: p.id, label: p.label })),
 	defaultPresetId: DEFAULT_BLUR_PRESET_ID,
 	render,
 } satisfies OverlayModule;
-

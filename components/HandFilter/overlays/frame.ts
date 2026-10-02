@@ -111,6 +111,7 @@ function render({
 export default {
 	id: 'frame',
 	label: 'Bingkai',
+	modes: ['photo'],
 	// Filter warna tampil sebagai chips "Gaya" (mekanisme preset generik).
 	presets: FRAME_FILTERS.map((f) => ({ id: f.id, label: f.label })),
 	defaultPresetId: DEFAULT_FRAME_FILTER_ID,

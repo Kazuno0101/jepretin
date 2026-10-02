@@ -73,6 +73,7 @@ function render({ ctx, width, height, face, presetId }: OverlayRenderContext) {
 export default {
 	id: 'heart',
 	label: 'Hati',
+	modes: ['photo'],
 	presets: [
 		{ id: 'mahkota', label: 'Mahkota' },
 		{ id: 'sisi', label: 'Sisi' },

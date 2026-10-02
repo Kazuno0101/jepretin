@@ -155,6 +155,7 @@ function render({
 export default {
 	id: 'skeleton',
 	label: 'Rangka',
+	modes: ['photo'],
 	presets: [
 		{ id: 'wajah', label: 'Wajah' },
 		{ id: 'tanpa', label: 'Tanpa wajah' },

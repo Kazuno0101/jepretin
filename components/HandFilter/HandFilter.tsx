@@ -137,9 +137,6 @@ export default function HandFilter() {
 	const { landmarkerRef: faceLandmarkerRef } = useFaceLandmarker();
 	const camera = useCamera(videoRef);
 
-	// Tema default "Bingkai" — fitur partial filter dua tangan hasil port dari
-	// prototipe index.html, jadi langsung aktif saat kamera menyala.
-	const [overlayId, setOverlayId] = useState('frame');
 	const [handDetected, setHandDetected] = useState(false);
 	// Preset gaya tema aktif (generik; untuk tema Bingkai = filter warna).
 	// Di-reset ke default tema setiap kali ganti tema.
@@ -148,6 +145,15 @@ export default function HandFilter() {
 	const [captureMode, setCaptureMode] = useState<CaptureMode>('single');
 	// Mode hasil: foto (gesture/countdown) vs video (tombol rekam).
 	const [mediaMode, setMediaMode] = useState<MediaMode>('photo');
+	// Tema aktif disimpan PER MODE hasil — list tema foto & video berbeda
+	// (foto: semua tema kecuali Blur; video: Blur saja), jadi pilihan tiap
+	// mode tidak saling menimpa saat bolak-balik ganti mode. Default foto
+	// = "Bingkai" (fitur andalan port prototipe), default video = "Blur".
+	const [overlayByMode, setOverlayByMode] = useState<Record<MediaMode, string>>({
+		photo: 'frame',
+		video: 'blur',
+	});
+	const overlayId = overlayByMode[mediaMode];
 	const [photos, setPhotos] = useState<Photo[]>([]);
 	const [flash, setFlash] = useState(false);
 	const [statusNote, setStatusNote] = useState<string | null>(null);
@@ -177,6 +183,13 @@ export default function HandFilter() {
 	const burstFramesRef = useRef<string[]>([]);
 
 	const overlay = useMemo(() => getOverlay(overlayId), [overlayId]);
+
+	// Ganti tema aktif (manual, maupun otomatis saat ganti mode hasil karena
+	// list tiap mode berbeda) → sub-gaya kembali ke default tema itu.
+	useEffect(() => {
+		const next = getOverlay(overlayId);
+		setThemePresetId(next.defaultPresetId ?? next.presets?.[0]?.id ?? '');
+	}, [overlayId]);
 
 	// Perekam video: merekam canvas (video + efek) via MediaRecorder.
 	const recorder = useRecorder(canvasRef);
@@ -496,6 +509,9 @@ export default function HandFilter() {
 					next = `Kepalan terdeteksi — foto dalam ${countdownSeconds}s…`;
 				} else if (burstActiveRef.current) {
 					return prev; // sedang di tengah burst — blok burst yang mengatur
+				} else if (mediaMode === 'video') {
+					// Mode video: kepalan diabaikan — pandu ke tombol rekam.
+					next = 'Mode video — tekan "Rekam video" untuk mulai merekam.';
 				} else if (overlay.id !== 'frame') {
 					next =
 						handsRef.current.length > 0 ?
@@ -700,12 +716,9 @@ export default function HandFilter() {
 							}
 							overlayId={overlayId}
 							onOverlayChange={(id) => {
-								setOverlayId(id);
-								// Ganti tema → preset gaya kembali ke default tema itu.
-								const next = getOverlay(id);
-								setThemePresetId(
-									next.defaultPresetId ?? next.presets?.[0]?.id ?? '',
-								);
+								// Simpan per mode aktif — tema foto & video tidak saling tukar
+								// (reset sub-gaya ditangani effect pada overlayId).
+								setOverlayByMode((prev) => ({ ...prev, [mediaMode]: id }));
 							}}
 							themePresets={overlay.presets ?? null}
 							themePresetId={themePresetId}

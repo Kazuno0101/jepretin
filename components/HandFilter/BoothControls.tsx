@@ -77,6 +77,11 @@ export default function BoothControls({
 			window.matchMedia('(min-width: 1025px)').matches,
 	);
 
+	// List "Tema" per mode hasil: foto & video menawarkan tema berbeda
+	// (lihat OverlayModule.modes) — mode video hanya Blur, mode foto semua
+	// tema dekoratif lainnya. Ganti mode otomatis menampilkan daftar itu.
+	const themes = OVERLAYS.filter((o) => o.modes?.includes(mediaMode) ?? true);
+
 	return (
 		<div className="booth-panel">
 			{/* ── Kepala panel: tombol kamera (baris sendiri, penuh) ───────────
@@ -182,7 +187,7 @@ export default function BoothControls({
 					Tema
 				</span>
 				<div className="chips" role="group" aria-labelledby="group-tema">
-					{OVERLAYS.map((o) => (
+					{themes.map((o) => (
 						<button
 							key={o.id}
 							type="button"
